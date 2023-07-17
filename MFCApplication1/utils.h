@@ -1,0 +1,10 @@
+std::wstring stringToWstring(const std::string & str);
+std::string wstringToString(const std::wstring & wstr);
+std::string utf8togbk(const char* szUtf8);
+std::string gbktoutf8(const char* szGbk);
+void GetModuleFilePath(std::string& path);
+std::string getCurTimeString();
+std::string getCurTimeString2();
+std::string getCurTimeHourString();
+std::string formatTimeString(std::string timeStr);
+std::string compresstTimeString(std::string timeStr);
