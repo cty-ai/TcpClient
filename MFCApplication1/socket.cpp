@@ -366,6 +366,10 @@ eqkSocket::SocketErr eqkSocket::ccsrcSocketWithHead(std::string hostIp, unsigned
 		closeSocket();
 		return SOCKET_CONNECT_ERR;
 	}
+	else if (!sendData2(head, headLen)){
+		closeSocket();
+		return SOCKET_SEND_ERR;
+	}
 	else if (!sendData(reqStr)) {
 		closeSocket();
 		return SOCKET_SEND_ERR;

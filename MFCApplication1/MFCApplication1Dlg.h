@@ -5,7 +5,7 @@
 #pragma once
 #include "afxwin.h"
 #include "EditEx.h"
-
+#include <chrono>
 
 // CMFCApplication1Dlg ¶Ô»°¿ò
 class CMFCApplication1Dlg : public CDialogEx
@@ -43,6 +43,7 @@ public:
 	CEditEx m_editResp;
 	CStatic m_staticS;
 	CStatic m_staticR;
+	CStatic m_staticT;
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);

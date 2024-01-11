@@ -77,6 +77,7 @@ void CMFCApplication1Dlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_R, m_editResp);
 	DDX_Control(pDX, IDC_STATIC_S, m_staticS);
 	DDX_Control(pDX, IDC_STATIC_R, m_staticR);
+	DDX_Control(pDX, IDC_STATIC_T, m_staticT);
 	DDX_Control(pDX, IDC_EDIT_H, m_editHead);
 }
 
@@ -105,7 +106,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 	// IDM_ABOUTBOX 必须在系统命令范围内。
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
-
+	m_editReq.SetLimitText(UINT_MAX);
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
 	if (pSysMenu != NULL)
 	{
@@ -189,56 +190,77 @@ HCURSOR CMFCApplication1Dlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
-
-void CMFCApplication1Dlg::OnBnClickedSend()
+DWORD WINAPI SendRcveThread(LPVOID pParam)
 {
-	// TODO:  在此添加控件通知处理程序代码
+	CMFCApplication1Dlg *pThis = (CMFCApplication1Dlg *)pParam;
 	CString reqWstr, respWstr, tmpCstr;
-	m_editIp.GetWindowTextW(m_ip);
-	m_editPort.GetWindowTextW(m_port);
-	m_editHead.GetWindowTextW(m_head);
-	m_editReq.GetWindowTextW(reqWstr);
-	m_editResp.SetWindowTextW(L"waiting...");
-	UpdateWindow();
 
-	std::string ip = wstringToString(m_ip.GetString());
-	int port = _wtoi(m_port);
+	std::string ip = wstringToString(pThis->m_ip.GetString());
+	int port = _wtoi(pThis->m_port);
 
 	std::string reqStr, respStr;
+	pThis->m_editReq.GetWindowTextW(reqWstr);
 	reqStr = wstringToString(reqWstr.GetString());
 
 	tmpCstr.Format(L"S:%d", reqStr.length());
-	m_staticS.SetWindowTextW(tmpCstr);
+	pThis->m_staticS.SetWindowTextW(tmpCstr);
+
 
 	eqkSocket sk(1000, 300 * 1000);
 	eqkSocket::SocketErr err;
-	if (!m_head.IsEmpty()){
+	auto start = std::chrono::high_resolution_clock::now();
+	if (!pThis->m_head.IsEmpty()){
+		//ConsoleWrite(wstringToString(pThis->m_head.GetString()).c_str());
 		std::string headStr;
 		int len = reqStr.length();
 		len = htonl(len);
 		char head[8] = "CIPC";
-		wstringToString(m_head.GetString());
-		_snprintf_s(head, 8, "%s", wstringToString(m_head.GetString()).c_str());
+		wstringToString(pThis->m_head.GetString());
+		_snprintf_s(head, 8, "%s", wstringToString(pThis->m_head.GetString()).c_str());
 		memcpy(head + 4, &len, 4);
 		err = sk.ccsrcSocketWithHead(ip, port, reqStr, respStr, head, 8);
 	}
 	else{
 		err = sk.ccsrcSocket(ip, port, reqStr, respStr);
 	}
+
+	auto end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> tm = end - start;
+	tmpCstr.Format(L"耗时:%.0fms", tm.count());
+	pThis->m_staticT.SetWindowTextW(tmpCstr);
+	//printf("耗时:%fms", tm.count());
+	UpdateWindow(pThis->m_hWnd);
 	if (err == eqkSocket::SocketErr::SOCKET_NO_ERR){
 		printf("send [%s:%d] success\r\n", ip.c_str(), port);
 		respStr = utf8togbk(respStr.c_str());
 		respWstr = stringToWstring(respStr).c_str();
-		m_editResp.SetWindowTextW(respWstr);
+		pThis->m_editResp.SetWindowTextW(respWstr);
 		tmpCstr.Format(L"R:%d", respStr.length());
-		m_staticR.SetWindowTextW(tmpCstr);
+		pThis->m_staticR.SetWindowTextW(tmpCstr);
 	}
 	else{
 		std::string errMsg = sk.getErrStr(err);
 		printf("%s\r\n", errMsg.c_str());
-		m_editResp.SetWindowTextW(stringToWstring(errMsg).c_str());
+		pThis->m_editResp.SetWindowTextW(stringToWstring(errMsg).c_str());
 	}
+	return 0;
+}
+
+void CMFCApplication1Dlg::OnBnClickedSend()
+{
+	// TODO:  在此添加控件通知处理程序代码
+	m_editIp.GetWindowTextW(m_ip);
+	m_editPort.GetWindowTextW(m_port);
+	m_editHead.GetWindowTextW(m_head);
+	m_editResp.SetWindowTextW(L"waiting...");
+	UpdateWindow();
+	m_staticT.SetWindowTextW(L"耗时:");
+
+	DWORD threadId;
+	HANDLE handle = CreateThread(NULL, 0, SendRcveThread, this, 0, &threadId);
+	if (handle != INVALID_HANDLE_VALUE)
+		CloseHandle(handle);
+
 }
 
 
